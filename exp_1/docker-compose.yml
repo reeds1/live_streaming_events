@@ -1,0 +1,121 @@
+version: '3.8'
+
+services:
+  # RabbitMQ 
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: event-rabbitmq
+    ports:
+      - "5672:5672"   # AMQP 
+      - "15672:15672" # management UI
+    environment:
+      RABBITMQ_DEFAULT_USER: admin
+      RABBITMQ_DEFAULT_PASS: admin123
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: rabbitmq-diagnostics -q ping
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis 缓存
+  redis:
+    image: redis:7-alpine
+    container_name: event-redis
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: redis-cli ping
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # MySQL
+  mysql:
+    image: mysql:8.0
+    container_name: event-mysql
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: root123
+      MYSQL_DATABASE: event_system
+      MYSQL_USER: event_user
+      MYSQL_PASSWORD: event_pass
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    command: --default-authentication-plugin=mysql_native_password
+    healthcheck:
+      test: mysqladmin ping -h localhost -u root -p$$MYSQL_ROOT_PASSWORD
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  #  API
+  producer:
+    build:
+      context: .
+      dockerfile: Dockerfile.producer
+    container_name: event-producer
+    ports:
+      - "5000:5000"
+    environment:
+      RABBITMQ_HOST: rabbitmq
+      ENABLE_FILTER: "false"
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # consumer
+  consumer:
+    build:
+      context: .
+      dockerfile: Dockerfile.consumer
+    container_name: event-consumer
+    environment:
+      RABBITMQ_HOST: rabbitmq
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      MYSQL_HOST: mysql
+      MYSQL_USER: root
+      MYSQL_PASSWORD: root123
+      MYSQL_DATABASE: event_system
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      mysql:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # query API
+  query-api:
+    build:
+      context: .
+      dockerfile: Dockerfile.query
+    container_name: event-query-api
+    ports:
+      - "5001:5001"
+    environment:
+      REDIS_HOST: redis
+      MYSQL_HOST: mysql
+      MYSQL_USER: root
+      MYSQL_PASSWORD: root123
+      MYSQL_DATABASE: event_system
+    depends_on:
+      redis:
+        condition: service_healthy
+      mysql:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  rabbitmq_data:
+  redis_data:
+  mysql_data:
