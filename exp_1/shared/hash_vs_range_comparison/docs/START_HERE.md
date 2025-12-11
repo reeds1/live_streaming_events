@@ -35,7 +35,7 @@ After running the tests, you'll see:
 ## 📁 Key Files to Read
 
 ### For Quick Understanding:
-1. **测试结果总结.md** - Chinese summary (quickest to understand)
+1. **TEST_RESULTS_SUMMARY.md** - Test results summary (quickest to understand)
 2. **QUICK_REFERENCE.md** - Performance numbers at a glance
 3. **visualize_results.py output** - Visual comparison
 

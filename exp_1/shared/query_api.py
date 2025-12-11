@@ -9,7 +9,7 @@ import os
 
 app = FastAPI(
     title="Event Query API",
-    description="查询用户事件和统计信息",
+    description="Query user events and statistics",
     version="1.0.0"
 )
 

@@ -1,42 +1,42 @@
-# 共同部分 (Shared Components)
+# Shared Components
 
-## 📋 概述
+## 📋 Overview
 
-这是直播抢券系统的**共同部分**，包含了两位同学都需要使用的基础设施和工具。
+This is the **shared components** of the live streaming coupon grabbing system, containing infrastructure and tools that both students need to use.
 
-### 包含内容
+### Contents
 
-1. **数据库 Schema** (`database_schema.sql`)
-2. **数据生成器** (`data_seeder.py`)
-3. **Locust 高级压测脚本** (`locustfile_advanced.py`)
-4. **Docker Compose 环境** (`docker-compose.yml`)
+1. **Database Schema** (`database_schema.sql`)
+2. **Data Generator** (`data_seeder.py`)
+3. **Advanced Locust Load Testing Script** (`locustfile_advanced.py`)
+4. **Docker Compose Environment** (`docker-compose.yml`)
 
 ---
 
-## 🗄️ 数据库设计
+## 🗄️ Database Design
 
-### 核心表结构
+### Core Table Structure
 
-| 表名 | 用途 | 分片策略支持 |
-|-----|------|------------|
-| `users` | 用户信息 | Hash (按 user_id) |
-| `live_rooms` | 直播间信息 | - |
-| `coupons` | 优惠券主表 | Range (按 room_id) |
-| `coupon_details` | 优惠券详情（垂直分表） | - |
-| `coupon_results` | 抢券结果 **[核心]** | Hash / Range 都支持 |
-| `stock_logs` | 库存操作日志 | - |
+| Table Name | Purpose | Sharding Strategy Support |
+|-----------|---------|-------------------------|
+| `users` | User information | Hash (by user_id) |
+| `live_rooms` | Live room information | - |
+| `coupons` | Coupon main table | Range (by room_id) |
+| `coupon_details` | Coupon details (vertical sharding) | - |
+| `coupon_results` | Coupon grab results **[Core]** | Supports both Hash / Range |
+| `stock_logs` | Stock operation logs | - |
 
-### 索引设计
+### Index Design
 
-为了支持两种分片策略，`coupon_results` 表设计了完善的索引：
+To support both sharding strategies, the `coupon_results` table has comprehensive indexes:
 
 ```sql
--- Hash 分片需要的索引
+-- Indexes needed for Hash sharding
 INDEX idx_user_id (user_id)
 INDEX idx_user_coupon (user_id, coupon_id)
 INDEX idx_user_time (user_id, grab_time)
 
--- Range 分片需要的索引
+-- Indexes needed for Range sharding
 INDEX idx_room_id (room_id)
 INDEX idx_grab_time (grab_time)
 INDEX idx_room_time (room_id, grab_time)
@@ -44,51 +44,51 @@ INDEX idx_room_time (room_id, grab_time)
 
 ---
 
-## 🚀 快速开始
+## 🚀 Quick Start
 
-### 1️⃣ 启动基础环境
+### 1️⃣ Start Base Environment
 
 ```bash
 cd shared
 docker-compose up -d
 ```
 
-启动的服务：
-- MySQL 主库（端口 3306）
-- MySQL 分片 0-3（端口 3307-3310）
-- Redis（端口 6379）
-- RabbitMQ（端口 5672, 管理界面 15672）
-- phpMyAdmin（端口 8080）
-- RedisInsight（端口 8081）
+Services started:
+- MySQL main database (port 3306)
+- MySQL shards 0-3 (ports 3307-3310)
+- Redis (port 6379)
+- RabbitMQ (port 5672, management UI 15672)
+- phpMyAdmin (port 8080)
+- RedisInsight (port 8081)
 
-### 2️⃣ 初始化数据库
+### 2️⃣ Initialize Database
 
 ```bash
-# 安装依赖
+# Install dependencies
 pip install pymysql
 
-# 运行数据生成器
+# Run data generator
 python data_seeder.py
 ```
 
-生成的数据：
-- 100,000 个用户
-- 100 个直播间（包含 5 个热门直播间）
-- 500 个优惠券
+Generated data:
+- 100,000 users
+- 100 live rooms (including 5 hot rooms)
+- 500 coupons
 
-### 3️⃣ 运行压测
+### 3️⃣ Run Load Test
 
 ```bash
-# 安装 Locust
+# Install Locust
 pip install locust
 
-# 启动 Locust（WebUI 模式）
+# Start Locust (WebUI mode)
 locust -f locustfile_advanced.py --host=http://localhost:8000
 
-# 访问 http://localhost:8089 进行配置和启动
+# Visit http://localhost:8089 to configure and start
 ```
 
-或者直接命令行模式：
+Or directly in command line mode:
 
 ```bash
 locust -f locustfile_advanced.py --host=http://localhost:8000 \
@@ -97,53 +97,53 @@ locust -f locustfile_advanced.py --host=http://localhost:8000 \
 
 ---
 
-## 📊 压测场景说明
+## 📊 Load Test Scenarios
 
-### 场景 1: 普通用户（权重 5）
-- 随机抢券
-- 查询自己的优惠券
-- 查看优惠券库存
+### Scenario 1: Normal Users (Weight 5)
+- Random coupon grabbing
+- Query own coupons
+- View coupon stock
 
-### 场景 2: 热点用户（权重 3）
-- **专门抢热门直播间的券**
-- 用于测试 Range 分片的热点问题
+### Scenario 2: Hotspot Users (Weight 3)
+- **Specifically grab coupons from hot live rooms**
+- Used to test Range sharding hotspot issues
 
-### 场景 3: 跨分片查询用户（权重 1）
-- 查询某个直播间的所有订单
-- 查询时间范围内的订单
-- 全局统计
-- **用于测试 Hash 分片的跨分片聚合性能**
+### Scenario 3: Cross-Shard Query Users (Weight 1)
+- Query all orders for a live room
+- Query orders within time range
+- Global statistics
+- **Used to test Hash sharding cross-shard aggregation performance**
 
-### 场景 4: 管理员（权重 1）
-- 查看系统统计
-- 查看分片状态
+### Scenario 4: Admin (Weight 1)
+- View system statistics
+- View shard status
 
 ---
 
-## 🔧 配置说明
+## 🔧 Configuration
 
-### 数据库连接配置
+### Database Connection Configuration
 
-编辑 `data_seeder.py` 中的数据库配置：
+Edit database configuration in `data_seeder.py`:
 
 ```python
 DB_CONFIG = {
     'host': 'localhost',
     'port': 3306,
     'user': 'root',
-    'password': 'password',  # 修改为你的密码
+    'password': 'password',  # Change to your password
     'database': 'coupon_system',
     'charset': 'utf8mb4'
 }
 ```
 
-### Locust 压测参数
+### Locust Load Test Parameters
 
-编辑 `locustfile_advanced.py` 中的配置：
+Edit configuration in `locustfile_advanced.py`:
 
 ```python
 USER_ID_MIN = 1
-USER_ID_MAX = 100000    # 与数据生成器对应
+USER_ID_MAX = 100000    # Corresponds to data generator
 
 ROOM_ID_MIN = 1
 ROOM_ID_MAX = 100
@@ -152,112 +152,112 @@ COUPON_ID_MIN = 1
 COUPON_ID_MAX = 500
 
 HOT_ROOM_MIN = 1
-HOT_ROOM_MAX = 5        # 热门直播间范围
+HOT_ROOM_MAX = 5        # Hot room range
 ```
 
 ---
 
-## 📈 性能指标关注点
+## 📈 Performance Metrics to Focus On
 
-### 同学 A (Hash 分片) 应该关注：
+### Student A (Hash Sharding) should focus on:
 
-1. **写入 QPS**
-   - 4 个分片的写入 QPS 是否均衡
-   - 总 QPS 是否线性提升
+1. **Write QPS**
+   - Whether write QPS across 4 shards is balanced
+   - Whether total QPS scales linearly
 
-2. **数据分布**
-   - 使用 `SELECT COUNT(*) FROM coupon_results` 检查每个分片的数据量
-   - 是否存在数据倾斜（Data Skew）
+2. **Data Distribution**
+   - Use `SELECT COUNT(*) FROM coupon_results` to check data volume per shard
+   - Check for data skew
 
-3. **跨分片查询性能**
-   - `/api/room/:id/orders [Cross Shard]` 的响应时间
-   - 预期：会比较慢，因为需要聚合多个分片
+3. **Cross-Shard Query Performance**
+   - Response time of `/api/room/:id/orders [Cross Shard]`
+   - Expected: Will be slower, as it needs to aggregate multiple shards
 
-### 同学 B (Range 分片) 应该关注：
+### Student B (Range Sharding) should focus on:
 
-1. **范围查询性能**
-   - `/api/orders/recent [Time Range]` 的响应时间
-   - 预期：应该很快，因为数据在同一个分片
+1. **Range Query Performance**
+   - Response time of `/api/orders/recent [Time Range]`
+   - Expected: Should be fast, as data is in the same shard
 
-2. **热点负载**
-   - 热门直播间所在分片的 CPU/IO 负载
-   - `/api/coupon/grab [Hot Room]` 的响应时间
-   - 是否出现热点瓶颈
+2. **Hotspot Load**
+   - CPU/IO load of shard containing hot live rooms
+   - Response time of `/api/coupon/grab [Hot Room]`
+   - Whether hotspot bottlenecks occur
 
-3. **数据分布**
-   - 不同分片（按时间或直播间）的数据量差异
-   - 热点分片 vs 冷分片的负载差异
+3. **Data Distribution**
+   - Data volume differences across different shards (by time or room)
+   - Load differences between hot shards vs cold shards
 
 ---
 
-## 🛠️ 工具使用
+## 🛠️ Tool Usage
 
 ### phpMyAdmin
 - URL: http://localhost:8080
-- 服务器：mysql-main（或 mysql-shard-0~3）
-- 用户名：root
-- 密码：password
+- Server: mysql-main (or mysql-shard-0~3)
+- Username: root
+- Password: password
 
-可以方便地查看表结构、执行 SQL、查看数据分布。
+Can easily view table structure, execute SQL, view data distribution.
 
-### RabbitMQ 管理界面
+### RabbitMQ Management UI
 - URL: http://localhost:15672
-- 用户名：admin
-- 密码：admin123
+- Username: admin
+- Password: admin123
 
-可以监控消息队列的状态。
+Can monitor message queue status.
 
 ### RedisInsight
 - URL: http://localhost:8081
 
-可以监控 Redis 缓存的使用情况。
+Can monitor Redis cache usage.
 
 ---
 
-## 📝 数据库分片策略对比
+## 📝 Database Sharding Strategy Comparison
 
-| 维度 | Hash 分片（同学A） | Range 分片（同学B） |
-|-----|------------------|-------------------|
-| **写入性能** | ⭐⭐⭐⭐⭐ 均衡 | ⭐⭐⭐ 可能有热点 |
-| **范围查询** | ⭐⭐ 需要聚合 | ⭐⭐⭐⭐⭐ 快速 |
-| **数据分布** | ⭐⭐⭐⭐⭐ 均匀 | ⭐⭐⭐ 可能倾斜 |
-| **扩容难度** | ⭐⭐ 需要迁移 | ⭐⭐⭐⭐ 容易 |
-| **适用场景** | 写多读少、用户随机 | 时间查询、数据归档 |
-
----
-
-## 🎯 测试建议
-
-### 阶段 1：基准测试（Week 1）
-- 用 100 并发测试 5 分钟
-- 记录基准 QPS、响应时间、错误率
-
-### 阶段 2：压力测试（Week 2）
-- 逐步增加并发：500 → 1000 → 2000 → 5000
-- 找到系统瓶颈点
-
-### 阶段 3：对比测试（Week 3）
-- 同时测试 Hash 和 Range 两种策略
-- 对比不同场景下的性能表现
-- 记录数据库负载（CPU、IO、连接数）
-
-### 阶段 4：优化测试（Week 4）
-- 根据瓶颈进行优化（索引、缓存、连接池）
-- 重新测试验证效果
+| Dimension | Hash Sharding (Student A) | Range Sharding (Student B) |
+|-----------|---------------------------|---------------------------|
+| **Write Performance** | ⭐⭐⭐⭐⭐ Balanced | ⭐⭐⭐ May have hotspots |
+| **Range Queries** | ⭐⭐ Needs aggregation | ⭐⭐⭐⭐⭐ Fast |
+| **Data Distribution** | ⭐⭐⭐⭐⭐ Uniform | ⭐⭐⭐ May be skewed |
+| **Scaling Difficulty** | ⭐⭐ Needs migration | ⭐⭐⭐⭐ Easy |
+| **Use Cases** | Write-heavy, random users | Time queries, data archiving |
 
 ---
 
-## 📦 依赖安装
+## 🎯 Testing Recommendations
+
+### Phase 1: Baseline Test (Week 1)
+- Test with 100 concurrency for 5 minutes
+- Record baseline QPS, response time, error rate
+
+### Phase 2: Stress Test (Week 2)
+- Gradually increase concurrency: 500 → 1000 → 2000 → 5000
+- Find system bottleneck points
+
+### Phase 3: Comparison Test (Week 3)
+- Test both Hash and Range strategies simultaneously
+- Compare performance under different scenarios
+- Record database load (CPU, IO, connection count)
+
+### Phase 4: Optimization Test (Week 4)
+- Optimize based on bottlenecks (indexes, cache, connection pool)
+- Re-test to verify effectiveness
+
+---
+
+## 📦 Dependency Installation
 
 ```bash
-# Python 依赖
+# Python dependencies
 pip install -r requirements.txt
 
-# 或者手动安装
+# Or install manually
 pip install pymysql locust redis pika fastapi uvicorn
 ```
 
-创建 `requirements.txt`：
+Create `requirements.txt`:
 
 ```
 pymysql==1.1.0
@@ -270,39 +270,35 @@ uvicorn==0.24.0
 
 ---
 
-## 🐛 常见问题
+## 🐛 Common Issues
 
-### 1. MySQL 连接失败
+### 1. MySQL Connection Failed
 ```bash
-# 检查容器是否运行
+# Check if containers are running
 docker-compose ps
 
-# 查看 MySQL 日志
+# View MySQL logs
 docker-compose logs mysql-main
 ```
 
-### 2. 数据生成太慢
-- 调整 `BATCH_SIZE` 参数（默认 1000）
-- 减少生成数量（例如先生成 10,000 个用户测试）
+### 2. Data Generation Too Slow
+- Adjust `BATCH_SIZE` parameter (default 1000)
+- Reduce generation quantity (e.g., generate 10,000 users first for testing)
 
-### 3. Locust 压测连接失败
-- 确保后端服务已启动
-- 检查 `--host` 参数是否正确
+### 3. Locust Load Test Connection Failed
+- Ensure backend service is started
+- Check if `--host` parameter is correct
 
 ---
 
-## 📞 联系方式
+## 📞 Contact
 
-如有问题，请联系：
-- 同学 A: [邮箱/微信]
-- 同学 B (你): [邮箱/微信]
+If you have questions, please contact:
+- Student A: [Email/WeChat]
+- Student B (you): [Email/WeChat]
 
 ---
 
 ## 📄 License
 
 MIT
-
-
-
-

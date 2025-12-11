@@ -59,24 +59,24 @@ async def lifespan(app: FastAPI):
         result = cursor.fetchone()
         
         if result:
-            # 初始化 Redis 库存
+            # Initialize Redis stock
             redis_client.set('coupon:stock', result['remaining_stock'])
-            print(f"✅ 库存初始化: {result['remaining_stock']} (从 MySQL 加载)")
+            print(f"✅ Stock initialized: {result['remaining_stock']} (loaded from MySQL)")
         else:
-            # 如果数据库没有记录，设置默认值
+            # If no record in database, set default value
             redis_client.set('coupon:stock', 90000)
             cursor.execute("""
                 INSERT INTO coupon_config (coupon_type, total_stock, remaining_stock)
                 VALUES ('default', 90000, 90000)
             """)
             conn.commit()
-            print("✅ 库存初始化: 90000 (默认值)")
+            print("✅ Stock initialized: 90000 (default value)")
         
         cursor.close()
         conn.close()
     except Exception as e:
-        print(f"⚠️ MySQL 初始化警告: {e}")
-        print("使用 Redis 中的现有值或默认值")
+        print(f"⚠️ MySQL initialization warning: {e}")
+        print("Using existing value in Redis or default value")
     
     # 3. Connect to RabbitMQ
     try:
@@ -99,7 +99,7 @@ async def lifespan(app: FastAPI):
 # Create FastAPI application
 app = FastAPI(
     title="Event Producer API (Improved)",
-    description="使用 Redis 原子操作的优惠券系统",
+    description="Coupon system using Redis atomic operations",
     version="2.0.0",
     lifespan=lifespan
 )
@@ -122,13 +122,13 @@ async def root():
 @app.post("/api/coupon/grab")
 async def grab_coupon(request: CouponGrabRequest):
     """
-    【实验三专用】慢速版 API：直接穿透到 MySQL
-    没有 Redis，没有 MQ，只有数据库行锁。
+    [Experiment 3 specific] Slow version API: Direct access to MySQL
+    No Redis, no MQ, only database row locks.
     """
     start_time = time.time()
     
-    # 建立数据库连接 (模拟每次请求建立连接的高开销)
-    # 在高并发下，这很容易导致 "Too many connections"
+    # Establish database connection (simulating high overhead of creating connection per request)
+    # Under high concurrency, this easily leads to "Too many connections"
     try:
         conn = mysql.connector.connect(
             host=MYSQL_HOST,
@@ -137,34 +137,34 @@ async def grab_coupon(request: CouponGrabRequest):
             password=MYSQL_PASSWORD,
             database=MYSQL_DATABASE
         )
-        conn.autocommit = False #以此开启事务
+        conn.autocommit = False # Enable transaction
         cursor = conn.cursor(dictionary=True)
         
-        # 1. 开启事务并加锁查询 (FOR UPDATE 是性能杀手)
-        # 这行代码会让数据库锁住这一行，其他所有并发请求都在这里排队！
+        # 1. Start transaction and lock query (FOR UPDATE is a performance killer)
+        # This line will lock this row in the database, all other concurrent requests will queue here!
         cursor.execute("SELECT remaining_stock FROM coupon_config WHERE coupon_type = 'default' FOR UPDATE")
         result = cursor.fetchone()
         
         current_stock = result['remaining_stock'] if result else 0
         
         if current_stock > 0:
-            # 2. 扣减库存
+            # 2. Decrement stock
             cursor.execute("UPDATE coupon_config SET remaining_stock = remaining_stock - 1 WHERE coupon_type = 'default'")
             
-            # 3. 记录日志 (直接写库)
+            # 3. Record log (direct write to database)
             cursor.execute("""
                 INSERT INTO coupon_events (user_id, event_type, success, reason, remaining_stock, timestamp)
                 VALUES (%s, 'coupon_grab', 1, 'success', %s, %s)
             """, (request.user_id, current_stock - 1, time.time()))
             
-            # 4. 提交事务
+            # 4. Commit transaction
             conn.commit()
             success = True
             reason = 'success'
             remaining = current_stock - 1
         else:
-            # 库存不足
-            conn.rollback() # 释放锁
+            # Out of stock
+            conn.rollback() # Release lock
             success = False
             reason = 'out_of_stock'
             remaining = 0
@@ -172,7 +172,7 @@ async def grab_coupon(request: CouponGrabRequest):
     except mysql.connector.Error as e:
         if conn:
             conn.rollback()
-        # 这里直接返回 500，模拟数据库撑不住的情况
+        # Return 500 directly here, simulating database overload situation
         print(f"❌ DB Error: {e}")
         raise HTTPException(status_code=500, detail=f"Database overloaded: {str(e)}")
         
@@ -182,7 +182,7 @@ async def grab_coupon(request: CouponGrabRequest):
         raise HTTPException(status_code=500, detail=str(e))
         
     finally:
-        # 关闭连接
+        # Close connection
         if cursor: cursor.close()
         if conn: conn.close()
 
@@ -193,12 +193,12 @@ async def grab_coupon(request: CouponGrabRequest):
         'reason': reason,
         'remaining_stock': remaining,
         'latency_ms': latency,
-        'mode': 'direct_mysql_slow' # 标记这是慢速模式
+        'mode': 'direct_mysql_slow' # Mark this as slow mode
     }
 
 @app.post("/api/like")
 async def like_action(request: LikeRequest):
-    """点赞 API"""
+    """Like API"""
     is_top_like = hash(request.user_id) % 10 == 0
     
     event = {
@@ -234,7 +234,7 @@ async def like_action(request: LikeRequest):
 
 @app.post("/admin/reset")
 async def reset_stock():
-    """重置库存（从 MySQL 重新加载）"""
+    """Reset stock (reload from MySQL)"""
     try:
         conn = mysql.connector.connect(
             host=MYSQL_HOST,
@@ -245,14 +245,14 @@ async def reset_stock():
         )
         cursor = conn.cursor(dictionary=True)
         
-        # 重置 MySQL
+        # Reset MySQL
         cursor.execute("""
             UPDATE coupon_config 
             SET remaining_stock = total_stock 
             WHERE coupon_type = 'default'
         """)
         
-        # 重新加载到 Redis
+        # Reload to Redis
         cursor.execute("SELECT remaining_stock FROM coupon_config WHERE coupon_type = 'default'")
         result = cursor.fetchone()
         
@@ -275,20 +275,20 @@ async def reset_stock():
 
 @app.get("/admin/stats")
 async def get_stats():
-    """获取统计信息"""
+    """Get statistics"""
     try:
-        # Redis 库存
+        # Redis stock
         redis_stock = redis_client.get('coupon:stock')
         redis_stock = int(redis_stock) if redis_stock else 0
         
-        # RabbitMQ 队列深度
+        # RabbitMQ queue depth
         try:
             queue = rabbitmq_channel.queue_declare(queue='event_queue', passive=True)
             queue_depth = queue.method.message_count
         except:
             queue_depth = -1
         
-        # MySQL 库存
+        # MySQL stock
         try:
             conn = mysql.connector.connect(
                 host=MYSQL_HOST,
@@ -318,7 +318,7 @@ async def get_stats():
 
 @app.post("/admin/sync-to-mysql")
 async def sync_to_mysql():
-    """手动同步 Redis 库存到 MySQL"""
+    """Manually sync Redis stock to MySQL"""
     try:
         redis_stock = redis_client.get('coupon:stock')
         redis_stock = int(redis_stock) if redis_stock else 0
@@ -354,17 +354,17 @@ if __name__ == '__main__':
     ╔════════════════════════════════════════════════════════╗
     ║     Event Producer API v2.0 (Redis Atomic)            ║
     ╠════════════════════════════════════════════════════════╣
-    ║  特性:                                                 ║
-    ║  ✅ Redis 原子操作（高并发安全）                        ║
-    ║  ✅ MySQL 持久化（数据不丢失）                          ║
-    ║  ✅ 多实例部署（共享 Redis）                            ║
-    ║  ✅ 启动时从 MySQL 加载库存                             ║
+    ║  Features:                                             ║
+    ║  ✅ Redis atomic operations (high concurrency safe)   ║
+    ║  ✅ MySQL persistence (data not lost)                 ║
+    ║  ✅ Multi-instance deployment (shared Redis)           ║
+    ║  ✅ Load stock from MySQL on startup                  ║
     ╠════════════════════════════════════════════════════════╣
-    ║  启动命令:                                             ║
+    ║  Start command:                                        ║
     ║  uvicorn event_producer_api_improved:app               ║
     ║    --reload --port 8000                                ║
     ║                                                        ║
-    ║  API 文档: http://localhost:8000/docs                  ║
+    ║  API docs: http://localhost:8000/docs                  ║
     ╚════════════════════════════════════════════════════════╝
     """)
     

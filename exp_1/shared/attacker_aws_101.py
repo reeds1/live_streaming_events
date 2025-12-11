@@ -3,10 +3,10 @@ import asyncio
 import time
 import random
 
-# ✅ 适配你的 AWS 集成版 API 地址
+# ✅ Adapt to your AWS integrated API address
 API_URL = "http://localhost:8002/api/coupon/grab"
 
-# 配置：1000 人抢 10 张券 (Coupon 101)
+# Configuration: 2000 people grabbing 10 coupons (Coupon 101)
 TOTAL_REQUESTS = 2000 
 CONCURRENCY = 1000
 
@@ -17,11 +17,11 @@ async def attack(session):
     global success_count, fail_count
     user_id = random.randint(100000, 999999)
     
-    # ✅ [关键修改] 构造符合新 API 定义的 JSON
+    # ✅ [Critical modification] Construct JSON matching new API definition
     payload = {
         "user_id": str(user_id),
-        "coupon_id": 101,  # 必须是 Redis 里有的那个 ID
-        "room_id": 1001    # 必须对应数据库里的 Room ID
+        "coupon_id": 101,  # Must be the ID that exists in Redis
+        "room_id": 1001    # Must correspond to Room ID in database
     }
     
     try:
@@ -34,7 +34,7 @@ async def attack(session):
             result = await response.json()
             if result.get('success'):
                 success_count += 1
-                print(f"🎉 User {user_id} 抢到了! 剩余库存: {result.get('remaining_stock')}")
+                print(f"🎉 User {user_id} grabbed it! Remaining stock: {result.get('remaining_stock')}")
             else:
                 fail_count += 1
     except Exception as e:
@@ -42,7 +42,7 @@ async def attack(session):
         fail_count += 1
 
 async def main():
-    print(f"🏁 AWS 架构压测开始: 目标 Coupon 101 (库存10)...")
+    print(f"🏁 AWS architecture load test started: Target Coupon 101 (stock 10)...")
     start_time = time.time()
     
     async with aiohttp.ClientSession() as session:

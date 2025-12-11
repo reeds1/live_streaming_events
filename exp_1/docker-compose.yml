@@ -19,7 +19,7 @@ services:
       timeout: 5s
       retries: 5
 
-  # Redis 缓存
+  # Redis cache
   redis:
     image: redis:7-alpine
     container_name: event-redis

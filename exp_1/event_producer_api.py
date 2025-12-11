@@ -59,24 +59,24 @@ async def lifespan(app: FastAPI):
         result = cursor.fetchone()
         
         if result:
-            # 初始化 Redis 库存
+            # Initialize Redis stock
             redis_client.set('coupon:stock', result['remaining_stock'])
-            print(f"✅ 库存初始化: {result['remaining_stock']} (从 MySQL 加载)")
+            print(f"✅ Stock initialized: {result['remaining_stock']} (loaded from MySQL)")
         else:
-            # 如果数据库没有记录，设置默认值
+            # If no record in database, set default value
             redis_client.set('coupon:stock', 90000)
             cursor.execute("""
                 INSERT INTO coupon_config (coupon_type, total_stock, remaining_stock)
                 VALUES ('default', 90000, 90000)
             """)
             conn.commit()
-            print("✅ 库存初始化: 90000 (默认值)")
+            print("✅ Stock initialized: 90000 (default value)")
         
         cursor.close()
         conn.close()
     except Exception as e:
-        print(f"⚠️ MySQL 初始化警告: {e}")
-        print("使用 Redis 中的现有值或默认值")
+        print(f"⚠️ MySQL initialization warning: {e}")
+        print("Using existing value in Redis or default value")
     
     # 3. Connect to RabbitMQ
     try:
@@ -99,7 +99,7 @@ async def lifespan(app: FastAPI):
 # Create FastAPI application
 app = FastAPI(
     title="Event Producer API (Improved)",
-    description="使用 Redis 原子操作的优惠券系统",
+    description="Coupon system using Redis atomic operations",
     version="2.0.0",
     lifespan=lifespan
 )
@@ -122,21 +122,21 @@ async def root():
 @app.post("/api/coupon/grab")
 async def grab_coupon(request: CouponGrabRequest):
     """
-    优惠券抢购 API（使用 Redis 原子操作）
+    Coupon grab API (using Redis atomic operations)
     """
     start_time = time.time()
     
     try:
-        # ✅ 使用 Redis DECR 原子操作扣减库存
+        # ✅ Use Redis DECR atomic operation to decrement stock
         remaining = redis_client.decr('coupon:stock')
         
         if remaining >= 0:
-            # 抢券成功
+            # Coupon grab successful
             success = True
             reason = 'success'
             current_stock = remaining
         else:
-            # 库存不足，回滚
+            # Out of stock, rollback
             redis_client.incr('coupon:stock')
             success = False
             reason = 'out_of_stock'
@@ -144,7 +144,7 @@ async def grab_coupon(request: CouponGrabRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Redis error: {str(e)}")
     
-    # 构造事件
+    # Construct event
     event = {
         'service': 'Coupon',
         'event_type': 'coupon_grab',
@@ -155,7 +155,7 @@ async def grab_coupon(request: CouponGrabRequest):
         'remaining_stock': current_stock
     }
     
-    # 过滤逻辑
+    # Filter logic
     if ENABLE_FILTER and not success:
         return {
             'success': False,
@@ -165,18 +165,18 @@ async def grab_coupon(request: CouponGrabRequest):
             'latency_ms': (time.time() - start_time) * 1000
         }
     
-    # 发送到消息队列
+    # Send to message queue
     try:
         rabbitmq_channel.basic_publish(
             exchange='',
             routing_key='event_queue',
             body=json.dumps(event),
             properties=pika.BasicProperties(
-                delivery_mode=2  # 持久化消息
+                delivery_mode=2  # Persistent message
             )
         )
     except Exception as e:
-        # 发送失败，回滚库存
+        # Send failed, rollback stock
         if success:
             redis_client.incr('coupon:stock')
         raise HTTPException(status_code=500, detail=f"Failed to send message: {str(e)}")
@@ -192,7 +192,7 @@ async def grab_coupon(request: CouponGrabRequest):
 
 @app.post("/api/like")
 async def like_action(request: LikeRequest):
-    """点赞 API"""
+    """Like API"""
     is_top_like = hash(request.user_id) % 10 == 0
     
     event = {
@@ -228,7 +228,7 @@ async def like_action(request: LikeRequest):
 
 @app.post("/admin/reset")
 async def reset_stock():
-    """重置库存（从 MySQL 重新加载）"""
+    """Reset stock (reload from MySQL)"""
     try:
         conn = mysql.connector.connect(
             host=MYSQL_HOST,
@@ -239,14 +239,14 @@ async def reset_stock():
         )
         cursor = conn.cursor(dictionary=True)
         
-        # 重置 MySQL
+        # Reset MySQL
         cursor.execute("""
             UPDATE coupon_config 
             SET remaining_stock = total_stock 
             WHERE coupon_type = 'default'
         """)
         
-        # 重新加载到 Redis
+        # Reload to Redis
         cursor.execute("SELECT remaining_stock FROM coupon_config WHERE coupon_type = 'default'")
         result = cursor.fetchone()
         
@@ -269,20 +269,20 @@ async def reset_stock():
 
 @app.get("/admin/stats")
 async def get_stats():
-    """获取统计信息"""
+    """Get statistics"""
     try:
-        # Redis 库存
+        # Redis stock
         redis_stock = redis_client.get('coupon:stock')
         redis_stock = int(redis_stock) if redis_stock else 0
         
-        # RabbitMQ 队列深度
+        # RabbitMQ queue depth
         try:
             queue = rabbitmq_channel.queue_declare(queue='event_queue', passive=True)
             queue_depth = queue.method.message_count
         except:
             queue_depth = -1
         
-        # MySQL 库存
+        # MySQL stock
         try:
             conn = mysql.connector.connect(
                 host=MYSQL_HOST,
@@ -312,7 +312,7 @@ async def get_stats():
 
 @app.post("/admin/sync-to-mysql")
 async def sync_to_mysql():
-    """手动同步 Redis 库存到 MySQL"""
+    """Manually sync Redis stock to MySQL"""
     try:
         redis_stock = redis_client.get('coupon:stock')
         redis_stock = int(redis_stock) if redis_stock else 0
@@ -348,17 +348,17 @@ if __name__ == '__main__':
     ╔════════════════════════════════════════════════════════╗
     ║     Event Producer API v2.0 (Redis Atomic)            ║
     ╠════════════════════════════════════════════════════════╣
-    ║  特性:                                                 ║
-    ║  ✅ Redis 原子操作（高并发安全）                        ║
-    ║  ✅ MySQL 持久化（数据不丢失）                          ║
-    ║  ✅ 多实例部署（共享 Redis）                            ║
-    ║  ✅ 启动时从 MySQL 加载库存                             ║
+    ║  Features:                                             ║
+    ║  ✅ Redis atomic operations (high concurrency safe)   ║
+    ║  ✅ MySQL persistence (data not lost)                 ║
+    ║  ✅ Multi-instance deployment (shared Redis)           ║
+    ║  ✅ Load stock from MySQL on startup                  ║
     ╠════════════════════════════════════════════════════════╣
-    ║  启动命令:                                             ║
-    ║  uvicorn event_producer_api_improved:app               ║
-    ║    --reload --port 8000                                ║
+    ║  Start command:                                        ║
+    ║  uvicorn event_producer_api_improved:app              ║
+    ║    --reload --port 8000                               ║
     ║                                                        ║
-    ║  API 文档: http://localhost:8000/docs                  ║
+    ║  API docs: http://localhost:8000/docs                 ║
     ╚════════════════════════════════════════════════════════╝
     """)
     

@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Response # 👈 确保引入了 Response
+from fastapi import FastAPI, HTTPException, Response # 👈 Make sure Response is imported
 from pydantic import BaseModel
 import pika
 import redis
@@ -8,18 +8,18 @@ import os
 import sys
 
 # ============================================================
-# 1. 基础配置与路径
+# 1. Basic configuration and paths
 # ============================================================
 current_dir = os.path.dirname(os.path.abspath(__file__))
 strategies_dir = os.path.join(current_dir, 'hash_vs_range_comparison', 'strategies')
 sys.path.append(strategies_dir)
 
 # ============================================================
-# ✅ 2. 【关键修正】全局直接初始化 Redis
+# ✅ 2. [Critical fix] Initialize Redis globally
 # ============================================================
 print("🚀 System Starting: Initializing Redis...")
 try:
-    # 直接在这里连接，不要放在函数里
+    # Connect directly here, don't put it in a function
     redis_client = redis.Redis(
         host=os.getenv('REDIS_HOST', 'localhost'),
         port=int(os.getenv('REDIS_PORT', 6379)),
@@ -29,7 +29,7 @@ try:
     print("✅ Redis connection successful!")
 except Exception as e:
     print(f"❌ Redis connection failed: {e}")
-    redis_client = None  # 标记为 None，后续报错处理
+    redis_client = None  # Mark as None, handle errors later
 
 # Global variables for others
 rabbitmq_connection = None
@@ -37,7 +37,7 @@ rabbitmq_channel = None
 coupon_service = None
 
 # ============================================================
-# 3. 导入业务模块 (AWS & Strategy)
+# 3. Import business modules (AWS & Strategy)
 # ============================================================
 try:
     from hash_vs_range_comparison.strategies.database_aws import connection_pool_aws
@@ -57,18 +57,18 @@ class LikeRequest(BaseModel):
     user_id: str
 
 # ============================================================
-# 4. FastAPI App 定义
+# 4. FastAPI App definition
 # ============================================================
 app = FastAPI(title="Event Producer API", version="3.2.0")
 
-# 使用 startup 事件钩子 (比 lifespan 兼容性更好)
+# Use startup event hook (better compatibility than lifespan)
 @app.on_event("startup")
 async def startup_event():
     global rabbitmq_connection, rabbitmq_channel, coupon_service
     
     print("🚀 App Startup: Connecting to dependencies...")
     
-    # 1. 初始化 AWS RDS
+    # 1. Initialize AWS RDS
     if connection_pool_aws.initialize():
         print("✅ AWS RDS connection pool initialized!")
         if CachedCouponService:
@@ -76,7 +76,7 @@ async def startup_event():
             coupon_service = CachedCouponService('localhost', aws_strategy)
             print("✅ Query Service Ready")
     
-    # 2. 连接 RabbitMQ
+    # 2. Connect to RabbitMQ
     try:
         rabbitmq_connection = pika.BlockingConnection(pika.ConnectionParameters('localhost'))
         rabbitmq_channel = rabbitmq_connection.channel()
@@ -98,7 +98,7 @@ async def shutdown_event():
     print("🛑 Services shut down")
 
 # ============================================================
-# 5. API 接口
+# 5. API endpoints
 # ============================================================
 
 @app.get("/")
@@ -107,7 +107,7 @@ async def root():
 
 @app.post("/api/coupon/grab")
 async def grab_coupon(request: CouponGrabRequest):
-    # ✅ 检查 Redis 是否就绪
+    # ✅ Check if Redis is ready
     if not redis_client:
         raise HTTPException(status_code=500, detail="Redis client is not initialized")
 
@@ -115,7 +115,7 @@ async def grab_coupon(request: CouponGrabRequest):
     redis_key = f"coupon:{request.coupon_id}:stock"
     
     try:
-        # 这里的 redis_client 一定有值了
+        # redis_client here must have a value
         remaining = redis_client.decr(redis_key)
         
         if remaining >= 0:
@@ -131,7 +131,7 @@ async def grab_coupon(request: CouponGrabRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Redis error: {str(e)}")
     
-    # 构造事件
+    # Construct event
     event = {
         'service': 'Coupon',
         'event_type': 'coupon_grab',
@@ -144,7 +144,7 @@ async def grab_coupon(request: CouponGrabRequest):
         'remaining_stock': current_stock
     }
     
-    # 发送 MQ
+    # Send to MQ
     try:
         if rabbitmq_channel:
             rabbitmq_channel.basic_publish(
@@ -169,16 +169,16 @@ async def grab_coupon(request: CouponGrabRequest):
 @app.get("/api/coupons/{user_id}")
 def get_user_coupons(user_id: int, response: Response):
     """
-    Locust 压测专用接口
+    Locust load testing specific endpoint
     """
     if not coupon_service:
         raise HTTPException(status_code=500, detail="Service not ready")
     
     try:
-        # ✅ 正确处理元组返回值
+        # ✅ Properly handle tuple return value
         data, is_hit = coupon_service.get_user_coupons(user_id)
         
-        # ✅ 设置 Header 给 Locust 看
+        # ✅ Set Header for Locust to see
         if is_hit:
             response.headers["X-Cache"] = "HIT"
         else:
@@ -187,23 +187,23 @@ def get_user_coupons(user_id: int, response: Response):
         return {"code": 0, "data": data}
         
     except Exception as e:
-        # 打印报错堆栈，方便你看 Locust log
+        # Print error stack trace for Locust log viewing
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/admin/reset")
 async def reset_stock():
-    # 简单的库存重置逻辑
+    # Simple stock reset logic
     if not redis_client: return {"error": "No Redis"}
-    # 假设重置 ID 101 的库存为 100
+    # Assume reset stock for ID 101 to 100
     redis_client.set("coupon:101:stock", 100)
     return {"msg": "Reset coupon 101 to 100"}
 
 # ============================================================
-# 6. 启动入口 (强制 8080)
+# 6. Startup entry point (forced port 8080)
 # ============================================================
 if __name__ == '__main__':
     import uvicorn
-    # 这里指定了 8080
+    # Port 8080 is specified here
     uvicorn.run("event_producer_api_improved:app", host="0.0.0.0", port=8080, reload=True)

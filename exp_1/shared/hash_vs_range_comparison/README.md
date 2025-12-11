@@ -33,7 +33,7 @@ hash_vs_range_comparison/
 │   ├── FINAL_COMPARISON_REPORT.md
 │   ├── EXPERIMENT_RESULTS_ANALYSIS.md
 │   ├── QUICK_REFERENCE.md
-│   └── 测试结果总结.md          # Chinese summary
+│   └── TEST_RESULTS_SUMMARY.md  # Test results summary
 │
 └── README.md               # This file
 ```
@@ -87,7 +87,7 @@ cd ..
 - **`tests/verify_hotspot.py`** - Hotspot analysis
 
 ### Documentation
-- **`docs/测试结果总结.md`** - Chinese summary (easiest to understand)
+- **`docs/TEST_RESULTS_SUMMARY.md`** - Test results summary (easiest to understand)
 - **`docs/START_HERE.md`** - Quick start guide
 - **`docs/FINAL_COMPARISON_REPORT.md`** - Complete report
 

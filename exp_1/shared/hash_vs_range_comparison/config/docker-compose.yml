@@ -1,19 +1,19 @@
 version: '3.8'
 
 # ============================================================
-# Docker Compose 配置 - 直播抢券系统基础环境
+# Docker Compose Configuration - Live Streaming Coupon System Base Environment
 # ============================================================
-# 包含：
-# - MySQL (主数据库 + 4个分片实例)
-# - Redis (缓存层)
-# - RabbitMQ (消息队列)
-# - phpMyAdmin (数据库管理)
-# - RedisInsight (Redis 管理)
+# Includes:
+# - MySQL (Main database + 4 shard instances)
+# - Redis (Cache layer)
+# - RabbitMQ (Message queue)
+# - phpMyAdmin (Database management)
+# - RedisInsight (Redis management)
 # ============================================================
 
 services:
   # ============================================================
-  # MySQL 主数据库（基础数据）
+  # MySQL main database (base data)
   # ============================================================
   mysql-main:
     image: mysql:8.0
@@ -38,7 +38,7 @@ services:
       - coupon_network
 
   # ============================================================
-  # MySQL 分片实例 0-3 (用于 Hash 分片 - 同学A)
+  # MySQL shard instances 0-3 (for Hash sharding)
   # ============================================================
   mysql-shard-0:
     image: mysql:8.0
@@ -109,7 +109,7 @@ services:
       - coupon_network
 
   # ============================================================
-  # Redis (缓存层)
+  # Redis (cache layer)
   # ============================================================
   redis:
     image: redis:7-alpine
@@ -124,15 +124,15 @@ services:
       - coupon_network
 
   # ============================================================
-  # RabbitMQ (消息队列)
+  # RabbitMQ (message queue)
   # ============================================================
   rabbitmq:
     image: rabbitmq:3-management-alpine
     container_name: coupon_rabbitmq
     restart: always
     ports:
-      - "5672:5672"   # AMQP 端口
-      - "15672:15672" # 管理界面
+      - "5672:5672"   # AMQP port
+      - "15672:15672" # Management UI
     environment:
       RABBITMQ_DEFAULT_USER: admin
       RABBITMQ_DEFAULT_PASS: admin123
@@ -142,7 +142,7 @@ services:
       - coupon_network
 
   # ============================================================
-  # phpMyAdmin (MySQL 数据库管理工具)
+  # phpMyAdmin (MySQL database management tool)
   # ============================================================
   phpmyadmin:
     image: phpmyadmin/phpmyadmin:latest
@@ -160,7 +160,7 @@ services:
       - coupon_network
 
   # ============================================================
-  # RedisInsight (Redis 管理工具)
+  # RedisInsight (Redis management tool)
   # ============================================================
   redisinsight:
     image: redislabs/redisinsight:latest
@@ -174,7 +174,7 @@ services:
       - coupon_network
 
 # ============================================================
-# 数据卷
+# Volumes
 # ============================================================
 volumes:
   mysql_main_data:
@@ -195,43 +195,43 @@ volumes:
     driver: local
 
 # ============================================================
-# 网络
+# Networks
 # ============================================================
 networks:
   coupon_network:
     driver: bridge
 
 # ============================================================
-# 使用说明
+# Usage instructions
 # ============================================================
-# 1. 启动所有服务：
+# 1. Start all services:
 #    docker-compose up -d
 #
-# 2. 查看服务状态：
+# 2. Check service status:
 #    docker-compose ps
 #
-# 3. 查看日志：
+# 3. View logs:
 #    docker-compose logs -f [service_name]
 #
-# 4. 停止所有服务：
+# 4. Stop all services:
 #    docker-compose down
 #
-# 5. 停止并删除数据卷：
+# 5. Stop and remove volumes:
 #    docker-compose down -v
 #
 # ============================================================
-# 访问地址
+# Access addresses
 # ============================================================
-# - MySQL 主库：localhost:3306
-# - MySQL 分片0：localhost:3307
-# - MySQL 分片1：localhost:3308
-# - MySQL 分片2：localhost:3309
-# - MySQL 分片3：localhost:3310
-# - Redis：localhost:6379
-# - RabbitMQ：localhost:5672
-# - RabbitMQ 管理界面：http://localhost:15672 (admin/admin123)
-# - phpMyAdmin：http://localhost:8080
-# - RedisInsight：http://localhost:8081
+# - MySQL main: localhost:3306
+# - MySQL shard 0: localhost:3307
+# - MySQL shard 1: localhost:3308
+# - MySQL shard 2: localhost:3309
+# - MySQL shard 3: localhost:3310
+# - Redis: localhost:6379
+# - RabbitMQ: localhost:5672
+# - RabbitMQ management UI: http://localhost:15672 (admin/admin123)
+# - phpMyAdmin: http://localhost:8080
+# - RedisInsight: http://localhost:8081
 # ============================================================
 
 

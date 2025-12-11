@@ -1,6 +1,6 @@
 import pymysql
 import logging
-# 引入配置
+# Import configuration
 try:
     from hash_vs_range_comparison.strategies.database_aws import DatabaseConfigAWS
 except ImportError:
@@ -11,10 +11,10 @@ logger = logging.getLogger(__name__)
 
 def create_global_tables(conn):
     """
-    🛠️ 在 Main DB 创建全局表
-    包含: users, live_rooms, coupons, coupon_details, stock_logs
+    🛠️ Create global tables in Main DB
+    Includes: users, live_rooms, coupons, coupon_details, stock_logs
     """
-    logger.info("  --> 正在创建全局表 (Users, Rooms, Coupons)...")
+    logger.info("  --> Creating global tables (Users, Rooms, Coupons)...")
     with conn.cursor() as cursor:
         # 1. Users Table
         cursor.execute("""
@@ -55,7 +55,7 @@ def create_global_tables(conn):
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
         """)
 
-        # 4. Coupon Details (垂直分表)
+        # 4. Coupon Details (vertical sharding)
         cursor.execute("""
         CREATE TABLE IF NOT EXISTS coupon_details (
             coupon_id BIGINT PRIMARY KEY,
@@ -66,7 +66,7 @@ def create_global_tables(conn):
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
         """)
         
-        # 5. Stock Logs (库存日志)
+        # 5. Stock Logs (inventory logs)
         cursor.execute("""
         CREATE TABLE IF NOT EXISTS stock_logs (
             log_id BIGINT PRIMARY KEY AUTO_INCREMENT,
@@ -78,24 +78,24 @@ def create_global_tables(conn):
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
         """)
 
-        # --- 插入测试数据 ---
-        logger.info("  --> 正在插入测试数据...")
+        # --- Insert test data ---
+        logger.info("  --> Inserting test data...")
         
-        # 插入主播
+        # Insert anchors
         cursor.execute("""
             INSERT IGNORE INTO users (user_id, username, user_level) VALUES 
             (10001, 'anchor_alice', 3),
             (10002, 'anchor_bob', 3);
         """)
         
-        # 插入直播间
+        # Insert live rooms
         cursor.execute("""
             INSERT IGNORE INTO live_rooms (room_id, room_name, anchor_id, is_hot) VALUES 
             (1001, 'Alice Live Room', 10001, 1);
         """)
         
-        # 插入优惠券 (Coupon 101, Stock 10)
-        # ⚠️ 注意：这里 total_stock 设为 10，方便你做竞速测试
+        # Insert coupon (Coupon 101, Stock 10)
+        # ⚠️ Note: total_stock is set to 10 here for speed testing
         cursor.execute("""
             INSERT INTO coupons (coupon_id, room_id, coupon_name, coupon_type, total_stock, remaining_stock, status) 
             VALUES (101, 1001, 'AWS Speed Test Coupon', 1, 10, 10, 1)
@@ -106,10 +106,10 @@ def create_global_tables(conn):
 
 def create_sharded_tables(conn, shard_id):
     """
-    🛠️ 在所有 Shard DB 创建订单表
-    包含: coupon_results_hash (对应 SQL 里的 coupon_results)
+    🛠️ Create order tables in all Shard DBs
+    Includes: coupon_results_hash (corresponds to coupon_results in SQL)
     """
-    table_name = "coupon_results_hash" # 我们的代码里用这个名字
+    table_name = "coupon_results_hash" # This is the name we use in our code
     logger.info(f"  --> Shard {shard_id}: Creating table {table_name}...")
     
     sql = f"""
@@ -123,7 +123,7 @@ def create_sharded_tables(conn, shard_id):
         grab_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         use_status TINYINT DEFAULT 0,
         
-        -- 核心索引 (对应队友的设计)
+        -- Core indexes (corresponding to teammate's design)
         INDEX idx_user_id (user_id),
         INDEX idx_coupon_id (coupon_id),
         INDEX idx_room_id (room_id),
@@ -132,12 +132,12 @@ def create_sharded_tables(conn, shard_id):
     """
     with conn.cursor() as cursor:
         cursor.execute(sql)
-        # 清空旧数据方便测试
+        # Clear old data for testing convenience
         cursor.execute(f"TRUNCATE TABLE {table_name}")
         conn.commit()
 
 def initialize_aws():
-    print("🚀 开始按照最新设计图纸初始化 AWS...")
+    print("🚀 Starting AWS initialization according to latest design...")
     
     for shard_id, config in DatabaseConfigAWS.SHARD_DBS.items():
         try:
@@ -151,18 +151,18 @@ def initialize_aws():
                 connect_timeout=10
             )
             
-            # 1. 无论哪个分片，都创建订单表
+            # 1. Create order table for all shards
             create_sharded_tables(conn, shard_id)
             
-            # 2. 如果是 Main DB (Shard 0)，额外创建全局表
+            # 2. If it's Main DB (Shard 0), additionally create global tables
             if shard_id == 0:
                 create_global_tables(conn)
             
             conn.close()
-            print(f"✅ Shard {shard_id} 初始化完成")
+            print(f"✅ Shard {shard_id} initialization complete")
             
         except Exception as e:
-            print(f"❌ Shard {shard_id} 失败: {e}")
+            print(f"❌ Shard {shard_id} failed: {e}")
 
 if __name__ == "__main__":
     initialize_aws()

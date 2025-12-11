@@ -4,10 +4,10 @@ import asyncio
 import time
 import random
 
-# 配置
+# Configuration
 API_URL = "http://localhost:8000/api/coupon/grab"
-TOTAL_REQUESTS = 5000    # 总请求数
-CONCURRENCY = 1000        # 并发数 (模拟多少人同时点)
+TOTAL_REQUESTS = 5000    # Total requests
+CONCURRENCY = 1000        # Concurrency (simulate how many people clicking simultaneously)
 
 success_count = 0
 fail_count = 0
@@ -34,7 +34,7 @@ async def main():
         tasks = []
         for i in range(TOTAL_REQUESTS):
             tasks.append(attack(session, i))
-            # 控制并发节奏
+            # Control concurrency pace
             if len(tasks) >= CONCURRENCY:
                 await asyncio.gather(*tasks)
                 tasks = []

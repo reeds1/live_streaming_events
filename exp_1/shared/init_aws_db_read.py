@@ -4,11 +4,11 @@ import random
 import time
 from datetime import datetime, timedelta
 
-# 引入配置
+# Import configuration
 try:
     from hash_vs_range_comparison.strategies.database_aws import DatabaseConfigAWS
 except ImportError:
-    # 兼容直接运行的情况
+    # Compatible with direct execution
     class DatabaseConfigAWS:
         SHARD_DBS = {
             0: {"host": "localhost", "port": 3306, "user": "root", "password": "password", "database": "db_shard_0"},
@@ -20,10 +20,10 @@ logger = logging.getLogger(__name__)
 
 def create_global_tables(conn):
     """
-    🛠️ 在 Main DB 创建全局表
-    包含: users, live_rooms, coupons, coupon_details, stock_logs
+    🛠️ Create global tables in Main DB
+    Includes: users, live_rooms, coupons, coupon_details, stock_logs
     """
-    logger.info("  --> 正在创建全局表 (Users, Rooms, Coupons)...")
+    logger.info("  --> Creating global tables (Users, Rooms, Coupons)...")
     with conn.cursor() as cursor:
         # 1. Users Table
         cursor.execute("""
@@ -64,7 +64,7 @@ def create_global_tables(conn):
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
         """)
 
-        # 4. Coupon Details (垂直分表)
+        # 4. Coupon Details (vertical sharding)
         cursor.execute("""
         CREATE TABLE IF NOT EXISTS coupon_details (
             coupon_id BIGINT PRIMARY KEY,
@@ -75,7 +75,7 @@ def create_global_tables(conn):
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
         """)
         
-        # 5. Stock Logs (库存日志)
+        # 5. Stock Logs (inventory logs)
         cursor.execute("""
         CREATE TABLE IF NOT EXISTS stock_logs (
             log_id BIGINT PRIMARY KEY AUTO_INCREMENT,
@@ -87,8 +87,8 @@ def create_global_tables(conn):
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
         """)
 
-        # --- 插入基础测试数据 ---
-        logger.info("  --> 正在插入基础配置数据...")
+        # --- Insert basic test data ---
+        logger.info("  --> Inserting basic configuration data...")
         cursor.execute("""
             INSERT IGNORE INTO users (user_id, username, user_level) VALUES 
             (10001, 'anchor_alice', 3),
@@ -110,7 +110,7 @@ def create_global_tables(conn):
 
 def create_sharded_tables(conn, shard_id):
     """
-    🛠️ 在所有 Shard DB 创建订单表 并批量插入测试数据
+    🛠️ Create order tables in all Shard DBs and batch insert test data
     """
     table_name = "coupon_results_hash" 
     logger.info(f"  --> Shard {shard_id}: Creating table {table_name}...")
@@ -135,36 +135,36 @@ def create_sharded_tables(conn, shard_id):
     
     with conn.cursor() as cursor:
         cursor.execute(sql)
-        # 清空旧数据
+        # Clear old data
         cursor.execute(f"TRUNCATE TABLE {table_name}")
         
         # ==========================================
-        # 🚀 批量插入测试数据 (Batch Insert)
+        # 🚀 Batch insert test data (Batch Insert)
         # ==========================================
-        TOTAL_ROWS_PER_SHARD = 20000  # 每个分片插 2万条，总量就是 2万 * 分片数
-        BATCH_SIZE = 1000             # 每次 SQL 插 1000 条
+        TOTAL_ROWS_PER_SHARD = 20000  # Insert 20k rows per shard, total is 20k * number of shards
+        BATCH_SIZE = 1000             # Insert 1000 rows per SQL
         
-        logger.info(f"  --> Shard {shard_id}: 正在生成 {TOTAL_ROWS_PER_SHARD} 条测试数据...")
+        logger.info(f"  --> Shard {shard_id}: Generating {TOTAL_ROWS_PER_SHARD} test data entries...")
         
         data_buffer = []
-        base_user_id = shard_id * 1000000 # 简单的让不同分片 ID 错开一点
+        base_user_id = shard_id * 1000000 # Simply offset IDs for different shards
         
         for i in range(1, TOTAL_ROWS_PER_SHARD + 1):
-            # 生成模拟数据
-            uid = base_user_id + random.randint(1, 500000) # 随机 User ID
+            # Generate mock data
+            uid = base_user_id + random.randint(1, 500000) # Random User ID
             cid = random.randint(100, 110)                 # Coupon ID
             rid = 1001                                     # Room ID
             status = 1                                     # Grab Success
             used = random.choice([0, 1])                   # Use Status
             
-            # 随机时间 (最近30天)
+            # Random time (last 30 days)
             delta_seconds = random.randint(0, 30 * 24 * 3600)
             g_time = (datetime.now() - timedelta(seconds=delta_seconds)).strftime('%Y-%m-%d %H:%M:%S')
             
-            # 加入 buffer
+            # Add to buffer
             data_buffer.append(f"({uid}, {cid}, {rid}, {status}, {used}, '{g_time}')")
             
-            # 达到 BATCH_SIZE 或者是最后一条时，执行插入
+            # Execute insert when reaching BATCH_SIZE or last entry
             if len(data_buffer) >= BATCH_SIZE or i == TOTAL_ROWS_PER_SHARD:
                 values_str = ",".join(data_buffer)
                 insert_sql = f"""
@@ -174,12 +174,12 @@ def create_sharded_tables(conn, shard_id):
                 """
                 cursor.execute(insert_sql)
                 conn.commit()
-                data_buffer = [] # 清空 buffer
+                data_buffer = [] # Clear buffer
                 
-        logger.info(f"  --> Shard {shard_id}: ✅ 数据插入完成 ({TOTAL_ROWS_PER_SHARD} 条)")
+        logger.info(f"  --> Shard {shard_id}: ✅ Data insertion complete ({TOTAL_ROWS_PER_SHARD} entries)")
 
 def initialize_aws():
-    print("🚀 开始按照最新设计图纸初始化 AWS...")
+    print("🚀 Starting AWS initialization according to latest design...")
     
     for shard_id, config in DatabaseConfigAWS.SHARD_DBS.items():
         try:
@@ -194,18 +194,18 @@ def initialize_aws():
                 connect_timeout=10
             )
             
-            # 1. 无论哪个分片，都创建订单表并塞数据
+            # 1. For all shards, create order table and insert data
             create_sharded_tables(conn, shard_id)
             
-            # 2. 如果是 Main DB (Shard 0)，额外创建全局表
+            # 2. If it's Main DB (Shard 0), additionally create global tables
             if shard_id == 0:
                 create_global_tables(conn)
             
             conn.close()
-            print(f"✅ Shard {shard_id} 初始化完成")
+            print(f"✅ Shard {shard_id} initialization complete")
             
         except Exception as e:
-            print(f"❌ Shard {shard_id} 失败: {e}")
+            print(f"❌ Shard {shard_id} failed: {e}")
 
 if __name__ == "__main__":
     initialize_aws()
