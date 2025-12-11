@@ -1,0 +1,237 @@
+version: '3.8'
+
+# ============================================================
+# Docker Compose 配置 - 直播抢券系统基础环境
+# ============================================================
+# 包含：
+# - MySQL (主数据库 + 4个分片实例)
+# - Redis (缓存层)
+# - RabbitMQ (消息队列)
+# - phpMyAdmin (数据库管理)
+# - RedisInsight (Redis 管理)
+# ============================================================
+
+services:
+  # ============================================================
+  # MySQL 主数据库（基础数据）
+  # ============================================================
+  mysql-main:
+    image: mysql:8.0
+    container_name: coupon_mysql_main
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_DATABASE: coupon_system
+      MYSQL_USER: coupon_user
+      MYSQL_PASSWORD: coupon_pass
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_main_data:/var/lib/mysql
+      - ./database_schema.sql:/docker-entrypoint-initdb.d/schema.sql
+    command:
+      - --default-authentication-plugin=mysql_native_password
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --max_connections=1000
+    networks:
+      - coupon_network
+
+  # ============================================================
+  # MySQL 分片实例 0-3 (用于 Hash 分片 - 同学A)
+  # ============================================================
+  mysql-shard-0:
+    image: mysql:8.0
+    container_name: coupon_mysql_shard_0
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_DATABASE: coupon_db_0
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_shard_0_data:/var/lib/mysql
+    command:
+      - --default-authentication-plugin=mysql_native_password
+      - --max_connections=1000
+    networks:
+      - coupon_network
+
+  mysql-shard-1:
+    image: mysql:8.0
+    container_name: coupon_mysql_shard_1
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_DATABASE: coupon_db_1
+    ports:
+      - "3308:3306"
+    volumes:
+      - mysql_shard_1_data:/var/lib/mysql
+    command:
+      - --default-authentication-plugin=mysql_native_password
+      - --max_connections=1000
+    networks:
+      - coupon_network
+
+  mysql-shard-2:
+    image: mysql:8.0
+    container_name: coupon_mysql_shard_2
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_DATABASE: coupon_db_2
+    ports:
+      - "3309:3306"
+    volumes:
+      - mysql_shard_2_data:/var/lib/mysql
+    command:
+      - --default-authentication-plugin=mysql_native_password
+      - --max_connections=1000
+    networks:
+      - coupon_network
+
+  mysql-shard-3:
+    image: mysql:8.0
+    container_name: coupon_mysql_shard_3
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_DATABASE: coupon_db_3
+    ports:
+      - "3310:3306"
+    volumes:
+      - mysql_shard_3_data:/var/lib/mysql
+    command:
+      - --default-authentication-plugin=mysql_native_password
+      - --max_connections=1000
+    networks:
+      - coupon_network
+
+  # ============================================================
+  # Redis (缓存层)
+  # ============================================================
+  redis:
+    image: redis:7-alpine
+    container_name: coupon_redis
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes --maxmemory 1gb --maxmemory-policy allkeys-lru
+    networks:
+      - coupon_network
+
+  # ============================================================
+  # RabbitMQ (消息队列)
+  # ============================================================
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: coupon_rabbitmq
+    restart: always
+    ports:
+      - "5672:5672"   # AMQP 端口
+      - "15672:15672" # 管理界面
+    environment:
+      RABBITMQ_DEFAULT_USER: admin
+      RABBITMQ_DEFAULT_PASS: admin123
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - coupon_network
+
+  # ============================================================
+  # phpMyAdmin (MySQL 数据库管理工具)
+  # ============================================================
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin:latest
+    container_name: coupon_phpmyadmin
+    restart: always
+    ports:
+      - "8080:80"
+    environment:
+      PMA_ARBITRARY: 1
+      PMA_HOST: mysql-main
+      PMA_PORT: 3306
+    depends_on:
+      - mysql-main
+    networks:
+      - coupon_network
+
+  # ============================================================
+  # RedisInsight (Redis 管理工具)
+  # ============================================================
+  redisinsight:
+    image: redislabs/redisinsight:latest
+    container_name: coupon_redisinsight
+    restart: always
+    ports:
+      - "8081:8001"
+    volumes:
+      - redisinsight_data:/db
+    networks:
+      - coupon_network
+
+# ============================================================
+# 数据卷
+# ============================================================
+volumes:
+  mysql_main_data:
+    driver: local
+  mysql_shard_0_data:
+    driver: local
+  mysql_shard_1_data:
+    driver: local
+  mysql_shard_2_data:
+    driver: local
+  mysql_shard_3_data:
+    driver: local
+  redis_data:
+    driver: local
+  rabbitmq_data:
+    driver: local
+  redisinsight_data:
+    driver: local
+
+# ============================================================
+# 网络
+# ============================================================
+networks:
+  coupon_network:
+    driver: bridge
+
+# ============================================================
+# 使用说明
+# ============================================================
+# 1. 启动所有服务：
+#    docker-compose up -d
+#
+# 2. 查看服务状态：
+#    docker-compose ps
+#
+# 3. 查看日志：
+#    docker-compose logs -f [service_name]
+#
+# 4. 停止所有服务：
+#    docker-compose down
+#
+# 5. 停止并删除数据卷：
+#    docker-compose down -v
+#
+# ============================================================
+# 访问地址
+# ============================================================
+# - MySQL 主库：localhost:3306
+# - MySQL 分片0：localhost:3307
+# - MySQL 分片1：localhost:3308
+# - MySQL 分片2：localhost:3309
+# - MySQL 分片3：localhost:3310
+# - Redis：localhost:6379
+# - RabbitMQ：localhost:5672
+# - RabbitMQ 管理界面：http://localhost:15672 (admin/admin123)
+# - phpMyAdmin：http://localhost:8080
+# - RedisInsight：http://localhost:8081
+# ============================================================
+
+

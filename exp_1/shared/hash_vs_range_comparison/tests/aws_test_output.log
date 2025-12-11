@@ -1,0 +1,66 @@
+2025-12-08 11:38:41,239 - __main__ - INFO - Initializing AWS comparison experiment...
+2025-12-08 11:38:41,737 - database_aws - INFO - ✅ Connected to AWS RDS main database
+2025-12-08 11:38:42,158 - database_aws - INFO - ✅ Connected to AWS RDS shard 0
+2025-12-08 11:38:42,678 - database_aws - INFO - ✅ Connected to AWS RDS shard 1
+2025-12-08 11:38:43,184 - database_aws - INFO - ✅ Connected to AWS RDS shard 2
+2025-12-08 11:38:43,719 - database_aws - INFO - ✅ Connected to AWS RDS shard 3
+2025-12-08 11:38:44,150 - database_aws - INFO - ✅ Connected to AWS RDS main database
+2025-12-08 11:38:44,562 - database_aws - INFO - ✅ Connected to AWS RDS shard 0
+2025-12-08 11:38:44,996 - database_aws - INFO - ✅ Connected to AWS RDS shard 1
+2025-12-08 11:38:45,431 - database_aws - INFO - ✅ Connected to AWS RDS shard 2
+2025-12-08 11:38:45,872 - database_aws - INFO - ✅ Connected to AWS RDS shard 3
+2025-12-08 11:38:45,872 - __main__ - INFO - ✅ Both strategies connected to AWS RDS
+2025-12-08 11:38:45,872 - __main__ - INFO - 
+======================================================================
+2025-12-08 11:38:45,872 - __main__ - INFO - AWS COMPARISON EXPERIMENT
+2025-12-08 11:38:45,872 - __main__ - INFO - Hash vs Range on AWS RDS
+2025-12-08 11:38:45,872 - __main__ - INFO - ======================================================================
+2025-12-08 11:38:45,872 - __main__ - INFO - 
+======================================================================
+2025-12-08 11:38:45,872 - __main__ - INFO - Scenario 1: Write Performance Test (AWS RDS)
+2025-12-08 11:38:45,872 - __main__ - INFO - ======================================================================
+2025-12-08 11:38:45,876 - __main__ - INFO - 
+Testing Hash strategy writes on AWS...
+2025-12-08 11:40:10,595 - __main__ - INFO - Testing Range strategy writes on AWS...
+2025-12-08 11:41:34,624 - __main__ - INFO - 
+Results for: Write Performance (AWS)
+2025-12-08 11:41:34,625 - __main__ - INFO - ----------------------------------------------------------------------
+2025-12-08 11:41:34,625 - __main__ - INFO -   hash_avg_time_ms: 168.78
+2025-12-08 11:41:34,625 - __main__ - INFO -   range_avg_time_ms: 167.39
+2025-12-08 11:41:34,625 - __main__ - INFO -   hash_distribution: [127, 138, 106, 129]
+2025-12-08 11:41:34,625 - __main__ - INFO -   range_distribution: [174, 527, 133, 166]
+2025-12-08 11:41:34,625 - __main__ - INFO - 
+======================================================================
+2025-12-08 11:41:34,626 - __main__ - INFO - Scenario 2: Query by User ID (AWS RDS)
+2025-12-08 11:41:34,626 - __main__ - INFO - ======================================================================
+2025-12-08 11:41:34,627 - __main__ - INFO - 
+Testing Hash strategy user queries on AWS...
+2025-12-08 11:41:37,115 - __main__ - INFO - Testing Range strategy user queries on AWS...
+2025-12-08 11:41:46,941 - __main__ - INFO - 
+Results for: Query by User (AWS)
+2025-12-08 11:41:46,941 - __main__ - INFO - ----------------------------------------------------------------------
+2025-12-08 11:41:46,941 - __main__ - INFO -   hash_avg_time_ms: 82.92
+2025-12-08 11:41:46,941 - __main__ - INFO -   range_avg_time_ms: 327.52
+2025-12-08 11:41:46,941 - __main__ - INFO -   speedup: 3.95
+2025-12-08 11:41:46,941 - __main__ - INFO -   winner: Hash
+2025-12-08 11:41:46,941 - __main__ - INFO - 
+======================================================================
+2025-12-08 11:41:46,941 - __main__ - INFO - Scenario 3: Query by Room ID (AWS RDS)
+2025-12-08 11:41:46,941 - __main__ - INFO - ======================================================================
+2025-12-08 11:41:46,941 - __main__ - INFO - 
+Testing Hash strategy room queries on AWS...
+2025-12-08 11:41:57,167 - __main__ - INFO - Testing Range strategy room queries on AWS...
+2025-12-08 11:41:59,667 - __main__ - INFO - 
+Results for: Query by Room (AWS)
+2025-12-08 11:41:59,668 - __main__ - INFO - ----------------------------------------------------------------------
+2025-12-08 11:41:59,668 - __main__ - INFO -   hash_avg_time_ms: 340.86
+2025-12-08 11:41:59,668 - __main__ - INFO -   range_avg_time_ms: 83.33
+2025-12-08 11:41:59,668 - __main__ - INFO -   speedup: 4.09
+2025-12-08 11:41:59,668 - __main__ - INFO -   winner: Range
+2025-12-08 11:41:59,668 - __main__ - INFO - 
+======================================================================
+2025-12-08 11:41:59,668 - __main__ - INFO - AWS EXPERIMENT COMPLETED
+2025-12-08 11:41:59,668 - __main__ - INFO - ======================================================================
+2025-12-08 11:41:59,680 - __main__ - INFO - Results saved to: results/aws_comparison_results.json
+2025-12-08 11:41:59,680 - __main__ - INFO - 
+✅ AWS experiment completed successfully!

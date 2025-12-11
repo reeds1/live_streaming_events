@@ -1,0 +1,72 @@
+{
+  "timestamp": "2025-12-08T14:26:36.705405",
+  "scenarios": {
+    "scenario_1": {
+      "scenario": "Write Performance & Load Distribution (AWS)",
+      "hash_total_time_ms": 86276.81,
+      "range_total_time_ms": 84010.48,
+      "hash_avg_time_ms": 172.55,
+      "range_avg_time_ms": 168.01,
+      "hash_throughput": 5.8,
+      "range_throughput": 5.95,
+      "hash_distribution": [
+        219,
+        267,
+        268,
+        246
+      ],
+      "range_distribution": [
+        75,
+        787,
+        84,
+        54
+      ],
+      "hash_max_load_pct": 26.8,
+      "range_max_load_pct": 78.7,
+      "hash_balance_score": 92.03,
+      "range_balance_score": 0,
+      "winner": "Hash (Better load balance)"
+    },
+    "scenario_2": {
+      "scenario": "Query by User (AWS)",
+      "hash_avg_time_ms": 81.88,
+      "range_avg_time_ms": 331.25,
+      "speedup": 4.05,
+      "winner": "Hash"
+    },
+    "scenario_3": {
+      "scenario": "Query by Room (AWS)",
+      "hash_avg_time_ms": 334.94,
+      "range_avg_time_ms": 88.91,
+      "speedup": 3.77,
+      "winner": "Range"
+    },
+    "scenario_4": {
+      "scenario": "Query by Time Range (AWS)",
+      "hash_avg_time_ms": 365.92,
+      "range_avg_time_ms": 361.64,
+      "speedup": 1.01,
+      "winner": "Range"
+    },
+    "scenario_5": {
+      "scenario": "Hotspot Problem (AWS)",
+      "hash_distribution": [
+        219,
+        267,
+        268,
+        246
+      ],
+      "range_distribution": [
+        75,
+        787,
+        84,
+        54
+      ],
+      "hash_balance_score": 92.03,
+      "range_balance_score": 0,
+      "hash_max_pct": 26.8,
+      "range_max_pct": 78.7,
+      "winner": "Hash"
+    }
+  }
+}

@@ -122,72 +122,78 @@ async def root():
 @app.post("/api/coupon/grab")
 async def grab_coupon(request: CouponGrabRequest):
     """
-    优惠券抢购 API（使用 Redis 原子操作）
+    【实验三专用】慢速版 API：直接穿透到 MySQL
+    没有 Redis，没有 MQ，只有数据库行锁。
     """
     start_time = time.time()
     
+    # 建立数据库连接 (模拟每次请求建立连接的高开销)
+    # 在高并发下，这很容易导致 "Too many connections"
     try:
-        # ✅ 使用 Redis DECR 原子操作扣减库存
-        remaining = redis_client.decr('coupon:stock')
+        conn = mysql.connector.connect(
+            host=MYSQL_HOST,
+            port=MYSQL_PORT,
+            user=MYSQL_USER,
+            password=MYSQL_PASSWORD,
+            database=MYSQL_DATABASE
+        )
+        conn.autocommit = False #以此开启事务
+        cursor = conn.cursor(dictionary=True)
         
-        if remaining >= 0:
-            # 抢券成功
+        # 1. 开启事务并加锁查询 (FOR UPDATE 是性能杀手)
+        # 这行代码会让数据库锁住这一行，其他所有并发请求都在这里排队！
+        cursor.execute("SELECT remaining_stock FROM coupon_config WHERE coupon_type = 'default' FOR UPDATE")
+        result = cursor.fetchone()
+        
+        current_stock = result['remaining_stock'] if result else 0
+        
+        if current_stock > 0:
+            # 2. 扣减库存
+            cursor.execute("UPDATE coupon_config SET remaining_stock = remaining_stock - 1 WHERE coupon_type = 'default'")
+            
+            # 3. 记录日志 (直接写库)
+            cursor.execute("""
+                INSERT INTO coupon_events (user_id, event_type, success, reason, remaining_stock, timestamp)
+                VALUES (%s, 'coupon_grab', 1, 'success', %s, %s)
+            """, (request.user_id, current_stock - 1, time.time()))
+            
+            # 4. 提交事务
+            conn.commit()
             success = True
             reason = 'success'
-            current_stock = remaining
+            remaining = current_stock - 1
         else:
-            # 库存不足，回滚
-            redis_client.incr('coupon:stock')
+            # 库存不足
+            conn.rollback() # 释放锁
             success = False
             reason = 'out_of_stock'
-            current_stock = 0
+            remaining = 0
+
+    except mysql.connector.Error as e:
+        if conn:
+            conn.rollback()
+        # 这里直接返回 500，模拟数据库撑不住的情况
+        print(f"❌ DB Error: {e}")
+        raise HTTPException(status_code=500, detail=f"Database overloaded: {str(e)}")
+        
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Redis error: {str(e)}")
-    
-    # 构造事件
-    event = {
-        'service': 'Coupon',
-        'event_type': 'coupon_grab',
-        'user_id': request.user_id,
-        'timestamp': time.time(),
-        'success': success,
-        'reason': reason,
-        'remaining_stock': current_stock
-    }
-    
-    # 过滤逻辑
-    if ENABLE_FILTER and not success:
-        return {
-            'success': False,
-            'reason': reason,
-            'message': 'Event filtered (not sent to queue)',
-            'remaining_stock': current_stock,
-            'latency_ms': (time.time() - start_time) * 1000
-        }
-    
-    # 发送到消息队列
-    try:
-        rabbitmq_channel.basic_publish(
-            exchange='',
-            routing_key='event_queue',
-            body=json.dumps(event),
-            properties=pika.BasicProperties(
-                delivery_mode=2  # 持久化消息
-            )
-        )
-    except Exception as e:
-        # 发送失败，回滚库存
-        if success:
-            redis_client.incr('coupon:stock')
-        raise HTTPException(status_code=500, detail=f"Failed to send message: {str(e)}")
-    
+        if conn:
+            conn.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+        
+    finally:
+        # 关闭连接
+        if cursor: cursor.close()
+        if conn: conn.close()
+
     latency = (time.time() - start_time) * 1000
     
     return {
         'success': success,
         'reason': reason,
-        'remaining_stock': current_stock,
-        'latency_ms': latency
+        'remaining_stock': remaining,
+        'latency_ms': latency,
+        'mode': 'direct_mysql_slow' # 标记这是慢速模式
     }
 
 @app.post("/api/like")

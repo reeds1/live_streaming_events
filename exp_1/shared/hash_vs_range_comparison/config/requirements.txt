@@ -1,0 +1,11 @@
+# Python Dependencies for Hash vs Range Sharding Comparison
+
+# Database
+pymysql==1.1.0
+
+# Connection pooling
+DBUtils==3.0.3
+
+# Optional: For better testing
+pytest==7.4.3
+pytest-cov==4.1.0

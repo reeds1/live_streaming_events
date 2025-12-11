@@ -1,0 +1,66 @@
+{
+  "timestamp": "2025-12-08T11:02:56.267289",
+  "scenarios": {
+    "scenario_1": {
+      "scenario": "Write Performance",
+      "hash_avg_time_ms": 1.57,
+      "range_avg_time_ms": 1.27,
+      "hash_shard_distribution": [
+        30,
+        26,
+        17,
+        27
+      ],
+      "range_shard_distribution": [
+        36,
+        106,
+        30,
+        28
+      ],
+      "hash_balance_score": 80.61,
+      "range_balance_score": 35.07,
+      "winner": "Hash"
+    },
+    "scenario_2": {
+      "scenario": "Query by User",
+      "hash_avg_time_ms": 0.29,
+      "range_avg_time_ms": 1.34,
+      "speedup_factor": 4.64,
+      "winner": "Hash"
+    },
+    "scenario_3": {
+      "scenario": "Query by Room",
+      "hash_avg_time_ms": 1.31,
+      "range_avg_time_ms": 0.35,
+      "speedup_factor": 3.74,
+      "winner": "Range"
+    },
+    "scenario_4": {
+      "scenario": "Query by Time Range",
+      "hash_avg_time_ms": 1.75,
+      "range_avg_time_ms": 2.61,
+      "speedup_factor": 0.67,
+      "winner": "Range"
+    },
+    "scenario_5": {
+      "scenario": "Hotspot Problem",
+      "hash_shard_distribution": [
+        36,
+        106,
+        30,
+        28
+      ],
+      "range_shard_distribution": [
+        36,
+        106,
+        30,
+        28
+      ],
+      "hash_balance_score": 35.07,
+      "range_balance_score": 35.07,
+      "hash_stddev": 32.47,
+      "range_stddev": 32.47,
+      "winner": "Hash"
+    }
+  }
+}
