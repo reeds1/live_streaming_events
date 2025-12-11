@@ -1,0 +1,41 @@
+# Terraform generated files and directories to ignore
+
+# 1. 本地运行时目录 (The .terraform directory)
+# 包含提供程序二进制文件、模块和初始化后的本地配置。
+# 这个目录可以在每次初始化 (terraform init) 时重新生成。
+.terraform/
+**/.terraform/
+
+# 2. 状态文件 (State files)
+# 状态文件 (terraform.tfstate) 包含了您基础设施的敏感信息和当前状态。
+# 除非您专门配置了远程状态后端（推荐做法），否则不应提交。
+# 即使使用远程状态，本地的备份和锁定文件也应该被忽略。
+*.tfstate
+*.tfstate.*
+
+# 3. 变量文件 (Variable definition files)
+# *.tfvars 文件，特别是包含敏感数据的变量文件，不应提交。
+# 推荐的做法是使用 CI/CD 或安全密钥管理系统来传递这些变量。
+*.tfvars
+*.tfvars.json
+
+# 4. CLI 配置文件
+# 本地 Terraform CLI 配置
+.terraformrc
+terraform.rc
+
+# 5. 覆盖文件 (Override files)
+# 用于本地测试或调试的覆盖文件，不应提交。
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# 6. 计划文件 (Plan output files)
+# terraform plan -out=tfplan 命令生成的二进制计划文件
+*.tfplan
+
+# 7. 崩溃日志
+# 本地执行时产生的错误日志
+crash.log
+crash.*.log
