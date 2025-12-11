@@ -1,0 +1,72 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual environments
+venv/
+env/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Terraform
+.terraform/
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+*.tfvars.json
+.terraformrc
+terraform.rc
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+*.tfplan
+crash.log
+crash.*.log
+tfplan
+
+# Large files and binaries
+*.zip
+*.tar.gz
+*.rar
+*.log
+*.pid
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Docker
+*.log
+
+# Test results and reports
+*.html
+*.csv
+*.pdf
+*.docx
+
+# Locust files
+locust.log
+locust.pid
+
+# Node modules (if any)
+node_modules/
+
+# Environment variables
+.env
+.env.local
+
